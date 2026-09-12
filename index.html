@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>J.A.R.V.I.S</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: radial-gradient(circle at center, #0a0f1c 0%, #000 100%);
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .glow {
+      box-shadow: 0 0 20px #00f0ff, 0 0 40px #00f0ff40;
+    }
+    .arc {
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+  </style>
+</head>
+<body class="text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+  <div class="w-full max-w-md">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-cyan-400 arc glow flex items-center justify-center">
+        <div class="w-16 h-16 rounded-full bg-cyan-500/20 border-2 border-cyan-300"></div>
+      </div>
+      <h1 class="text-3xl font-bold text-cyan-400 tracking-widest">J.A.R.V.I.S</h1>
+      <p class="text-cyan-200 text-sm mt-1">Just A Rather Very Intelligent System</p>
+    </div>
+
+    <!-- Chat Area -->
+    <div id="chat" class="bg-black/40 border border-cyan-800 rounded-2xl p-4 h-80 overflow-y-auto mb-4 text-sm space-y-3">
+      <div class="text-cyan-300">
+        <strong>JARVIS:</strong> Good evening, Sir. How may I assist you today?
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="flex gap-2">
+      <input id="userInput" type="text" placeholder="Type or speak..." 
+             class="flex-1 bg-black/50 border border-cyan-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400">
+      <button onclick="sendMessage()" class="bg-cyan-600 hover:bg-cyan-500 px-5 rounded-xl font-medium">
+        Send
+      </button>
+      <button onclick="startVoice()" class="bg-cyan-800 hover:bg-cyan-700 px-4 rounded-xl">
+        🎤
+      </button>
+    </div>
+
+    <p class="text-center text-xs text-cyan-700 mt-4">Powered by free AI • Works on Android</p>
+  </div>
+
+  <script>
+    // Yahan apna free Gemini API key daalo
+    const API_KEY = "YAHAN_APNA_GEMINI_API_KEY_DAALO";
+
+    const chat = document.getElementById("chat");
+    const userInput = document.getElementById("userInput");
+
+    function addMessage(sender, text) {
+      const div = document.createElement("div");
+      div.className = sender === "You" ? "text-right text-cyan-100" : "text-cyan-300";
+      div.innerHTML = `<strong>${sender}:</strong> ${text}`;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      addMessage("You", message);
+      userInput.value = "";
+
+      addMessage("JARVIS", "Thinking...");
+
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{
+                  text: `You are JARVIS from Iron Man. Reply short, helpful, slightly witty and formal. User said: ${message}`
+                }]
+              }]
+            })
+          }
+        );
+
+        const data = await response.json();
+        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm having trouble connecting, Sir.";
+
+        // Last "Thinking..." message hatao
+        chat.removeChild(chat.lastChild);
+        addMessage("JARVIS", reply);
+
+        // Voice se bolna
+        speak(reply);
+      } catch (err) {
+        chat.removeChild(chat.lastChild);
+        addMessage("JARVIS", "Connection error, Sir.");
+      }
+    }
+
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      speechSynthesis.speak(utterance);
+    }
+
+    function startVoice() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = "en-IN";
+      recognition.start();
+
+      recognition.onresult = (event) => {
+        userInput.value = event.results[0][0].transcript;
+        sendMessage();
+      };
+    }
+
+    userInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+  </script>
+</body>
+</html>
